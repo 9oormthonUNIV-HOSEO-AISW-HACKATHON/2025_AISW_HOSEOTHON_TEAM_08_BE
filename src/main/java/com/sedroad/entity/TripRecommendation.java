@@ -1,17 +1,28 @@
 package com.sedroad.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "trip_recommendations", indexes = {
@@ -69,6 +80,22 @@ public class TripRecommendation {
 
     @Column(name = "talking_tip", columnDefinition = "TEXT")
     private String talkingTip;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "for_generation", length = 20)
+    private String forGeneration;
+
+    @Column(name = "room_name", length = 255)
+    private String roomName;
+
+    @Column(name = "analysis_summary", columnDefinition = "TEXT")
+    private String analysisSummary;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ai_adjustment", columnDefinition = "JSON")
+    private Map<String, Object> aiAdjustment;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

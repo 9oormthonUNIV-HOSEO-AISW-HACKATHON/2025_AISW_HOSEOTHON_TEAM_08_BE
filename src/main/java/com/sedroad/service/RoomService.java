@@ -179,7 +179,12 @@ public class RoomService {
                     .speed(50).stamina(50).budget(50).photo(50).tradition(50)
                     .build());
             
-            String tag = determineTag(profile);
+            // UserProfile에 저장된 태그가 있으면 사용, 없으면 계산
+            String tag = profileOpt.map(UserProfile::getTag)
+                    .orElse(determineTag(profile));
+            if (tag == null || tag.isEmpty()) {
+                tag = determineTag(profile);
+            }
             
             ParticipantDto dto = new ParticipantDto();
             dto.setId(user.getId());

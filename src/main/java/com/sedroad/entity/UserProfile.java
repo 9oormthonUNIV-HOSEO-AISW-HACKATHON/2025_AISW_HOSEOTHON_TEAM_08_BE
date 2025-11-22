@@ -43,6 +43,9 @@ public class UserProfile {
     @Column(nullable = false, columnDefinition = "INT DEFAULT 50")
     private Integer tradition = 50;
 
+    @Column(length = 50)
+    private String tag;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

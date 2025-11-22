@@ -22,7 +22,6 @@ import com.sedroad.service.OpenAIService.ParticipantInfo;
 import com.sedroad.service.OpenAIService.Preferences;
 import com.sedroad.service.OpenAIService.RecommendationContext;
 import com.sedroad.service.OpenAIService.RecommendationResult;
-import com.sedroad.service.RoomService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +75,11 @@ public class RecommendationService {
         dto1.setWhy(personalRec.getWhy());
         dto1.setSatisfaction(personalRec.getSatisfaction().getOrDefault(userGeneration, 88));
         dto1.setType("personal");
+        dto1.setForGeneration(userGeneration);
+        dto1.setOptions(personalRec.getOptions());
+        dto1.setEstimatedTime(personalRec.getEstimatedTime());
+        dto1.setEstimatedCost(personalRec.getEstimatedCost());
+        dto1.setTalkingTip(personalRec.getTalkingTip());
         recommendations.add(dto1);
         
         List<String> generations = List.of("30대", "40대", "50대+");
@@ -103,6 +107,11 @@ public class RecommendationService {
                 dto2.setWhy(genRec.getWhy());
                 dto2.setSatisfaction(genRec.getSatisfaction().getOrDefault(gen, 85));
                 dto2.setType("generation");
+                dto2.setForGeneration(genRec.getForGeneration() != null ? genRec.getForGeneration() : gen);
+                dto2.setOptions(genRec.getOptions());
+                dto2.setEstimatedTime(genRec.getEstimatedTime());
+                dto2.setEstimatedCost(genRec.getEstimatedCost());
+                dto2.setTalkingTip(genRec.getTalkingTip());
                 recommendations.add(dto2);
             }
         }
@@ -180,6 +189,11 @@ public class RecommendationService {
         dto.setSatisfaction(satisfaction);
         dto.setType("room");
         dto.setRoomName(room.getName());
+        dto.setForGeneration(result.getForGeneration() != null ? result.getForGeneration() : participants.get(0).getGeneration());
+        dto.setOptions(result.getOptions());
+        dto.setEstimatedTime(result.getEstimatedTime());
+        dto.setEstimatedCost(result.getEstimatedCost());
+        dto.setTalkingTip(result.getTalkingTip());
         
         saveRecommendation(null, roomId, dto, "room");
         
@@ -203,16 +217,43 @@ public class RecommendationService {
         if (recommendation instanceof PersonalRecommendationDto) {
             PersonalRecommendationDto dto = (PersonalRecommendationDto) recommendation;
             tripRec.setTitle(dto.getTitle());
+            tripRec.setDescription(dto.getDescription());
             tripRec.setCourse(dto.getCourse());
             tripRec.setWhy(dto.getWhy());
             tripRec.setType(TripRecommendation.Type.valueOf(type));
+            tripRec.setForGeneration(dto.getForGeneration());
+            tripRec.setOptions(dto.getOptions());
+            tripRec.setEstimatedTime(dto.getEstimatedTime());
+            tripRec.setEstimatedCost(dto.getEstimatedCost());
+            tripRec.setTalkingTip(dto.getTalkingTip());
+            tripRec.setAnalysisSummary(dto.getAnalysisSummary());
+            if (dto.getAiAdjustment() != null) {
+                tripRec.setAiAdjustment(dto.getAiAdjustment());
+            }
+            // 개인 추천의 경우 satisfaction을 단일 값으로 저장
+            if (dto.getSatisfaction() != null) {
+                Map<String, Integer> satMap = new HashMap<>();
+                satMap.put("default", dto.getSatisfaction());
+                tripRec.setSatisfaction(satMap);
+            }
         } else if (recommendation instanceof RoomRecommendationDto) {
             RoomRecommendationDto dto = (RoomRecommendationDto) recommendation;
             tripRec.setTitle(dto.getTitle());
+            tripRec.setDescription(dto.getDescription());
             tripRec.setCourse(dto.getCourse());
             tripRec.setWhy(dto.getWhy());
             tripRec.setSatisfaction(dto.getSatisfaction());
             tripRec.setType(TripRecommendation.Type.room);
+            tripRec.setRoomName(dto.getRoomName());
+            tripRec.setForGeneration(dto.getForGeneration());
+            tripRec.setOptions(dto.getOptions());
+            tripRec.setEstimatedTime(dto.getEstimatedTime());
+            tripRec.setEstimatedCost(dto.getEstimatedCost());
+            tripRec.setTalkingTip(dto.getTalkingTip());
+            tripRec.setAnalysisSummary(dto.getAnalysisSummary());
+            if (dto.getAiAdjustment() != null) {
+                tripRec.setAiAdjustment(dto.getAiAdjustment());
+            }
         }
         
         tripRecommendationRepository.save(tripRec);
@@ -238,6 +279,13 @@ public class RecommendationService {
         private String why;
         private Integer satisfaction;
         private String type;
+        private String forGeneration;
+        private Map<String, String> options;
+        private String estimatedTime;
+        private String estimatedCost;
+        private String talkingTip;
+        private String analysisSummary;
+        private Map<String, Object> aiAdjustment;
     }
     
     @lombok.Data
@@ -250,6 +298,13 @@ public class RecommendationService {
         private Map<String, Integer> satisfaction;
         private String type;
         private String roomName;
+        private String forGeneration;
+        private Map<String, String> options;
+        private String estimatedTime;
+        private String estimatedCost;
+        private String talkingTip;
+        private String analysisSummary;
+        private Map<String, Object> aiAdjustment;
     }
 }
 

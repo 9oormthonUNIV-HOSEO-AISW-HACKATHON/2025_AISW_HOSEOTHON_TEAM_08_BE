@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -75,6 +76,10 @@ public class ApiController {
                     profile.setBudget(result.getUserProfile().getBudget());
                     profile.setPhoto(result.getUserProfile().getPhoto());
                     profile.setTradition(result.getUserProfile().getTradition());
+                    
+                    // 태그 생성 및 저장
+                    String tag = analysisService.determineTag(result.getUserProfile());
+                    profile.setTag(tag);
                     
                     userProfileRepository.save(profile);
                 }
@@ -269,14 +274,44 @@ public class ApiController {
             
             List<Map<String, Object>> trips = savedTrips.stream().map(st -> {
                 TripRecommendation rec = st.getRecommendation();
-                return Map.of(
-                    "id", rec.getId(),
-                    "title", rec.getTitle() != null ? rec.getTitle() : "추천 여행",
-                    "description", rec.getWhy() != null ? rec.getWhy() : "",
-                    "course", rec.getCourse() != null ? rec.getCourse() : List.of(),
-                    "satisfaction", rec.getSatisfaction() != null ? rec.getSatisfaction() : Map.of(),
-                    "savedAt", st.getCreatedAt() != null ? st.getCreatedAt().toString() : ""
-                );
+                Map<String, Object> tripMap = new HashMap<>();
+                tripMap.put("id", rec.getId());
+                tripMap.put("title", rec.getTitle() != null ? rec.getTitle() : "추천 여행");
+                tripMap.put("description", rec.getDescription() != null ? rec.getDescription() : 
+                           (rec.getWhy() != null ? rec.getWhy() : ""));
+                tripMap.put("course", rec.getCourse() != null ? rec.getCourse() : List.of());
+                tripMap.put("why", rec.getWhy() != null ? rec.getWhy() : "");
+                tripMap.put("satisfaction", rec.getSatisfaction() != null ? rec.getSatisfaction() : Map.of());
+                tripMap.put("type", rec.getType() != null ? rec.getType().name() : "personal");
+                tripMap.put("savedAt", st.getCreatedAt() != null ? st.getCreatedAt().toString() : "");
+                
+                // 추가 필드들
+                if (rec.getForGeneration() != null) {
+                    tripMap.put("for_generation", rec.getForGeneration());
+                }
+                if (rec.getOptions() != null) {
+                    tripMap.put("options", rec.getOptions());
+                }
+                if (rec.getEstimatedTime() != null) {
+                    tripMap.put("estimated_time", rec.getEstimatedTime());
+                }
+                if (rec.getEstimatedCost() != null) {
+                    tripMap.put("estimated_cost", rec.getEstimatedCost());
+                }
+                if (rec.getTalkingTip() != null) {
+                    tripMap.put("talking_tip", rec.getTalkingTip());
+                }
+                if (rec.getRoomName() != null) {
+                    tripMap.put("roomName", rec.getRoomName());
+                }
+                if (rec.getAnalysisSummary() != null) {
+                    tripMap.put("analysisSummary", rec.getAnalysisSummary());
+                }
+                if (rec.getAiAdjustment() != null) {
+                    tripMap.put("aiAdjustment", rec.getAiAdjustment());
+                }
+                
+                return tripMap;
             }).collect(Collectors.toList());
             
             return ResponseEntity.ok(Map.of("trips", trips));
@@ -296,33 +331,43 @@ public class ApiController {
             com.sedroad.entity.UserProfile profile = userProfileRepository.findByUserId(userId)
                     .orElse(null);
             
+            Map<String, Object> responseMap = new HashMap<>();
+            responseMap.put("name", user.getName());
+            responseMap.put("email", user.getEmail());
+            responseMap.put("generation", user.getGeneration() != null ? user.getGeneration() : "");
+            
             if (profile == null) {
-                return ResponseEntity.ok(Map.of(
-                    "name", user.getName(),
-                    "email", user.getEmail(),
-                    "generation", user.getGeneration() != null ? user.getGeneration() : "",
-                    "profile", Map.of(
-                        "speed", 50,
-                        "stamina", 50,
-                        "budget", 50,
-                        "photo", 50,
-                        "tradition", 50
-                    )
+                // 프로필이 없는 경우 - 진단 미완료
+                responseMap.put("diagnosisCompleted", false);
+                responseMap.put("profile", Map.of(
+                    "speed", 50,
+                    "stamina", 50,
+                    "budget", 50,
+                    "photo", 50,
+                    "tradition", 50
                 ));
+            } else {
+                // 프로필이 있는 경우 - 진단 완료
+                responseMap.put("diagnosisCompleted", true);
+                
+                Map<String, Object> profileMap = new HashMap<>();
+                profileMap.put("speed", profile.getSpeed());
+                profileMap.put("stamina", profile.getStamina());
+                profileMap.put("budget", profile.getBudget());
+                profileMap.put("photo", profile.getPhoto());
+                profileMap.put("tradition", profile.getTradition());
+                if (profile.getTag() != null) {
+                    profileMap.put("tag", profile.getTag());
+                }
+                responseMap.put("profile", profileMap);
+                
+                // 프로필 생성 시간 추가
+                if (profile.getCreatedAt() != null) {
+                    responseMap.put("profileCreatedAt", profile.getCreatedAt().toString());
+                }
             }
             
-            return ResponseEntity.ok(Map.of(
-                "name", user.getName(),
-                "email", user.getEmail(),
-                "generation", user.getGeneration() != null ? user.getGeneration() : "",
-                "profile", Map.of(
-                    "speed", profile.getSpeed(),
-                    "stamina", profile.getStamina(),
-                    "budget", profile.getBudget(),
-                    "photo", profile.getPhoto(),
-                    "tradition", profile.getTradition()
-                )
-            ));
+            return ResponseEntity.ok(responseMap);
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "프로필 조회 중 오류가 발생했습니다."));

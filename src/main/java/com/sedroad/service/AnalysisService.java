@@ -90,6 +90,21 @@ public class AnalysisService {
         return profile;
     }
     
+    public String determineTag(TravelProfile profile) {
+        if (profile.getPhoto() > 70 && profile.getTradition() < 40) {
+            return "감성형";
+        } else if (profile.getTradition() > 70 && profile.getSpeed() < 50) {
+            return "여유형";
+        } else if (profile.getSpeed() > 70) {
+            return "체험형";
+        } else if (profile.getBudget() < 40) {
+            return "경험형";
+        } else if (profile.getStamina() > 80) {
+            return "활동형";
+        }
+        return "균형형";
+    }
+    
     private String generateSummary(
             TravelProfile userProfile,
             TravelProfile companionProfile,
