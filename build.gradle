@@ -1,0 +1,90 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'com.sedroad'
+version = '1.0.0'
+sourceCompatibility = '17'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot Starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    
+    // MySQL Driver
+    implementation 'com.mysql:mysql-connector-j'
+    
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+    
+    // OpenAI Client
+    implementation 'com.theokanning.openai-gpt3-java:service:0.18.2'
+    
+    // Jackson for JSON
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    
+    // Dev Tools
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    
+    // SpringDoc OpenAPI (Swagger)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+    
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// Lombok annotation processor 설정
+tasks.withType(JavaCompile) {
+    options.compilerArgs << '-parameters'
+    options.encoding = 'UTF-8'
+}
+
+// bootRun 태스크에서 .env 파일의 환경 변수 자동 로드
+tasks.named('bootRun') {
+    doFirst {
+        def envFile = file('.env')
+        if (envFile.exists()) {
+            println "Loading environment variables from .env"
+            envFile.readLines().each { line ->
+                if (line && !line.startsWith('#') && line.contains('=')) {
+                    def parts = line.split('=', 2)
+                    if (parts.length == 2) {
+                        def key = parts[0].trim()
+                        def value = parts[1].trim().replaceAll(/^["']|["']$/, '')
+                        if (key && value) {
+                            environment key, value
+                        }
+                    }
+                }
+            }
+        } else {
+            println "WARNING: .env file not found. Ensure environment variables are set."
+        }
+    }
+}
+

@@ -5,38 +5,8 @@
 ## 사전 요구사항
 
 - Java 17 이상
-- Maven 3.6 이상
+- Gradle (또는 Gradle Wrapper 사용)
 - MySQL 데이터베이스
-
-## 실행 방법
-
-### 1. Maven을 사용한 실행 (권장)
-
-먼저 `.env` 파일을 생성하고 환경 변수를 설정한 후:
-
-```bash
-cd backend-spring
-mvn spring-boot:run
-```
-
-### 2. JAR 파일로 실행
-
-먼저 빌드:
-```bash
-cd backend-spring
-mvn clean package
-```
-
-실행:
-```bash
-java -jar target/sedroad-backend-1.0.0.jar
-```
-
-### 3. IDE에서 실행
-
-- IntelliJ IDEA / Eclipse에서 `SedroadApplication.java` 파일을 열고
-- `main` 메서드를 실행하거나
-- Spring Boot 실행 설정을 사용하세요
 
 ## 서버 접속
 
