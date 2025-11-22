@@ -12,9 +12,9 @@
 
 서버가 시작되면 다음 주소에서 접속할 수 있습니다:
 
-- **API Base URL**: `http://localhost:3000/api`
-- **Swagger UI**: `http://localhost:3000/swagger-ui.html`
-- **API 문서**: `http://localhost:3000/v3/api-docs`
+- **API Base URL**: `http://localhost:8080/api`
+- **Swagger UI**: `http://localhost:8080/swagger-ui.html`
+- **API 문서**: `http://localhost:8080/v3/api-docs`
 
 ## 주요 API 엔드포인트
 
