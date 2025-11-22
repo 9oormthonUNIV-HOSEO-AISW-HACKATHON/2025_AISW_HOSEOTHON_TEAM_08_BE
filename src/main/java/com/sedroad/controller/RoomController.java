@@ -56,7 +56,7 @@ public class RoomController {
     }
     
     @GetMapping("/{roomId}")
-    public ResponseEntity<Map<String, Object>> getRoom(@PathVariable String roomId) {
+    public ResponseEntity<?> getRoom(@PathVariable String roomId) {
         try {
             RoomService.RoomDto room = roomService.getRoom(roomId);
             return ResponseEntity.ok(Map.of("room", room));
@@ -67,7 +67,7 @@ public class RoomController {
     }
     
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Map<String, Object>> getUserRooms(@PathVariable String userId) {
+    public ResponseEntity<?> getUserRooms(@PathVariable String userId) {
         try {
             List<RoomService.RoomDto> rooms = roomService.getUserRooms(userId);
             return ResponseEntity.ok(Map.of("rooms", rooms));
@@ -78,7 +78,7 @@ public class RoomController {
     }
     
     @GetMapping("/{roomId}/participants")
-    public ResponseEntity<Map<String, Object>> getRoomParticipants(@PathVariable String roomId) {
+    public ResponseEntity<?> getRoomParticipants(@PathVariable String roomId) {
         try {
             List<RoomService.ParticipantDto> participants = roomService.getRoomParticipants(roomId);
             return ResponseEntity.ok(Map.of("participants", participants));
