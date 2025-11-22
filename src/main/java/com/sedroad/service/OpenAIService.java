@@ -1,20 +1,22 @@
 package com.sedroad.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sedroad.dto.TravelProfile;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +31,7 @@ public class OpenAIService {
         세대 간 여행 취향 차이를 이해하고, 모든 참여자가 만족할 수 있는 여행 코스를 추천하는 것이 당신의 역할입니다.
         
         **핵심 원칙:**
-        1. 반드시 실제 존재하는 서울/경기 지역의 장소만 추천하세요
+        1. 반드시 실제 존재하는 전국 어디든 장소를 추천하세요
         2. 세대 간 공감대를 형성할 수 있는 장소를 우선 선택하세요
         3. 각 세대의 특성을 고려하되, 균형잡힌 추천을 제공하세요
         4. 구체적이고 실행 가능한 여행 코스를 제시하세요
@@ -97,7 +99,7 @@ public class OpenAIService {
                 - 선호 지역: %s
                 
                 **요구사항:**
-                1. 실제 존재하는 서울/경기 지역의 구체적인 장소명을 3-5개 제시하세요
+                1. 실제 존재하는 전국 어디든 구체적인 장소명을 3-5개 제시하세요
                 2. 각 장소는 참여자들의 평균 취향에 맞춰 선택하되, 세대 간 균형을 고려하세요
                 3. 이동 경로가 논리적이고 효율적이어야 합니다
                 4. 각 참여자별 예상 만족도를 제공하세요
@@ -127,7 +129,7 @@ public class OpenAIService {
                 context.getPreferences().getBudget() != null ? context.getPreferences().getBudget() : "5~10만원",
                 context.getPreferences().getPreferredPlaces() != null 
                         ? context.getPreferences().getPreferredPlaces() 
-                        : "서울 전역");
+                        : "전국");
         } else {
             String companionInfo = context.getCompanionGeneration() != null
                     ? String.format("\n**동반자:** %s (속도 %d%%, 체력 %d%%, 예산 %d%%, 사진 %d%%, 전통 %d%%)",
@@ -152,7 +154,7 @@ public class OpenAIService {
                 - 선호 지역: %s
                 
                 **요구사항:**
-                1. 실제 존재하는 서울/경기 지역의 구체적인 장소명을 3-5개 제시하세요
+                1. 실제 존재하는 전국 어디든 구체적인 장소명을 3-5개 제시하세요
                 2. 두 세대 모두가 만족할 수 있는 균형잡힌 코스로 구성하세요
                 3. 이동 경로가 논리적이고 효율적이어야 합니다
                 4. 각 세대별 예상 만족도를 제공하세요
@@ -190,7 +192,7 @@ public class OpenAIService {
                 context.getPreferences().getBudget() != null ? context.getPreferences().getBudget() : "5~10만원",
                 context.getPreferences().getPreferredPlaces() != null 
                         ? context.getPreferences().getPreferredPlaces() 
-                        : "서울 전역",
+                        : "전국",
                 context.getUserGeneration(),
                 context.getCompanionGeneration() != null ? context.getCompanionGeneration() : "companion",
                 context.getUserGeneration(),
@@ -200,8 +202,19 @@ public class OpenAIService {
     
     private RecommendationResult parseRecommendationResult(String jsonContent) {
         try {
+            String cleanedContent = jsonContent.trim();
+            if (cleanedContent.startsWith("```json")) {
+                cleanedContent = cleanedContent.substring(7);
+            } else if (cleanedContent.startsWith("```")) {
+                cleanedContent = cleanedContent.substring(3);
+            }
+            if (cleanedContent.endsWith("```")) {
+                cleanedContent = cleanedContent.substring(0, cleanedContent.length() - 3);
+            }
+            cleanedContent = cleanedContent.trim();
+            
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> jsonMap = mapper.readValue(jsonContent, Map.class);
+            Map<String, Object> jsonMap = mapper.readValue(cleanedContent, Map.class);
             
             RecommendationResult result = new RecommendationResult();
             result.setTitle((String) jsonMap.getOrDefault("title", "추천 여행"));
@@ -371,8 +384,19 @@ public class OpenAIService {
     
     private TalkingGuideResult parseTalkingGuideResult(String jsonContent) {
         try {
+            String cleanedContent = jsonContent.trim();
+            if (cleanedContent.startsWith("```json")) {
+                cleanedContent = cleanedContent.substring(7);
+            } else if (cleanedContent.startsWith("```")) {
+                cleanedContent = cleanedContent.substring(3);
+            }
+            if (cleanedContent.endsWith("```")) {
+                cleanedContent = cleanedContent.substring(0, cleanedContent.length() - 3);
+            }
+            cleanedContent = cleanedContent.trim();
+            
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> jsonMap = mapper.readValue(jsonContent, Map.class);
+            Map<String, Object> jsonMap = mapper.readValue(cleanedContent, Map.class);
             
             TalkingGuideResult result = new TalkingGuideResult();
             

@@ -42,6 +42,7 @@ public class ApiController {
             List<Map<String, Object>> userAnswersMap = (List<Map<String, Object>>) request.get("userAnswers");
             String userGeneration = (String) request.get("userGeneration");
             String companionGeneration = (String) request.get("companionGeneration");
+            String userId = (String) request.get("userId");
             
             if (userAnswersMap == null || userGeneration == null || companionGeneration == null) {
                 return ResponseEntity.badRequest()
@@ -59,6 +60,25 @@ public class ApiController {
             
             AnalysisService.AnalysisResult result = analysisService.analyzeGenerationDifference(
                     userAnswers, userGeneration, companionGeneration);
+            
+            if (userId != null && !userId.trim().isEmpty()) {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    com.sedroad.entity.UserProfile profile = userProfileRepository.findByUser(user)
+                            .orElse(com.sedroad.entity.UserProfile.builder()
+                                    .id(java.util.UUID.randomUUID().toString())
+                                    .user(user)
+                                    .build());
+                    
+                    profile.setSpeed(result.getUserProfile().getSpeed());
+                    profile.setStamina(result.getUserProfile().getStamina());
+                    profile.setBudget(result.getUserProfile().getBudget());
+                    profile.setPhoto(result.getUserProfile().getPhoto());
+                    profile.setTradition(result.getUserProfile().getTradition());
+                    
+                    userProfileRepository.save(profile);
+                }
+            }
             
             return ResponseEntity.ok(result);
         } catch (Exception e) {

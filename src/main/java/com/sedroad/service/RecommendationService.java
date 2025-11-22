@@ -44,9 +44,7 @@ public class RecommendationService {
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
         
         UserProfile profile = userProfileRepository.findByUser(user)
-                .orElse(UserProfile.builder()
-                        .speed(50).stamina(50).budget(50).photo(50).tradition(50)
-                        .build());
+                .orElseThrow(() -> new RuntimeException("여행 진단을 먼저 완료해주세요."));
         
         TravelProfile travelProfile = TravelProfile.builder()
                 .speed(profile.getSpeed())

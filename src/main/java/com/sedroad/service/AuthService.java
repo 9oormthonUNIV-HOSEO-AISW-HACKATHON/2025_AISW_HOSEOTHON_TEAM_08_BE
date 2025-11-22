@@ -1,5 +1,6 @@
 package com.sedroad.service;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,8 +12,6 @@ import com.sedroad.dto.AuthRequest;
 import com.sedroad.dto.AuthResponse;
 import com.sedroad.dto.UserDto;
 import com.sedroad.entity.User;
-import com.sedroad.entity.UserProfile;
-import com.sedroad.repository.UserProfileRepository;
 import com.sedroad.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -21,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
@@ -40,25 +38,22 @@ public class AuthService {
             throw new IllegalArgumentException("이름이 필요합니다.");
         }
         
-        if (userRepository.existsByEmail(request.getEmail().trim())) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        
+        Optional<User> existingUser = userRepository.findByEmailIgnoreCase(normalizedEmail);
+        if (existingUser.isPresent()) {
             throw new RuntimeException("이미 등록된 이메일입니다.");
         }
 
         User user = User.builder()
                 .id(UUID.randomUUID().toString())
-                .email(request.getEmail().trim().toLowerCase())
+                .email(normalizedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName().trim())
                 .generation(request.getGeneration() != null ? request.getGeneration().trim() : null)
                 .build();
 
         user = userRepository.save(user);
-
-        UserProfile profile = UserProfile.builder()
-                .id(UUID.randomUUID().toString())
-                .user(user)
-                .build();
-        userProfileRepository.save(profile);
 
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
 
@@ -86,7 +81,8 @@ public class AuthService {
             throw new IllegalArgumentException("비밀번호가 필요합니다.");
         }
         
-        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new RuntimeException("잘못된 이메일 또는 비밀번호입니다."));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
