@@ -1,0 +1,303 @@
+package com.sedroad.service;
+
+import com.sedroad.dto.TravelProfile;
+import com.sedroad.entity.Room;
+import com.sedroad.entity.TripRecommendation;
+import com.sedroad.entity.User;
+import com.sedroad.entity.UserProfile;
+import com.sedroad.repository.RoomParticipantRepository;
+import com.sedroad.repository.RoomRepository;
+import com.sedroad.repository.TripRecommendationRepository;
+import com.sedroad.repository.UserProfileRepository;
+import com.sedroad.repository.UserRepository;
+import com.sedroad.service.OpenAIService.ParticipantInfo;
+import com.sedroad.service.OpenAIService.Preferences;
+import com.sedroad.service.OpenAIService.RecommendationContext;
+import com.sedroad.service.OpenAIService.RecommendationResult;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RecommendationService {
+    
+    private final OpenAIService openAIService;
+    private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final RoomRepository roomRepository;
+    private final RoomParticipantRepository roomParticipantRepository;
+    private final TripRecommendationRepository tripRecommendationRepository;
+    
+    public List<PersonalRecommendationDto> generatePersonalRecommendations(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        
+        UserProfile profile = userProfileRepository.findByUser(user)
+                .orElse(UserProfile.builder()
+                        .speed(50).stamina(50).budget(50).photo(50).tradition(50)
+                        .build());
+        
+        TravelProfile travelProfile = TravelProfile.builder()
+                .speed(profile.getSpeed())
+                .stamina(profile.getStamina())
+                .budget(profile.getBudget())
+                .photo(profile.getPhoto())
+                .tradition(profile.getTradition())
+                .build();
+        
+        String userGeneration = user.getGeneration() != null ? user.getGeneration() : "30대";
+        
+        List<PersonalRecommendationDto> recommendations = new ArrayList<>();
+        
+        // 1. 개인 취향 기반 추천
+        RecommendationContext context1 = new RecommendationContext();
+        context1.setUserGeneration(userGeneration);
+        context1.setUserProfile(travelProfile);
+        Preferences prefs1 = new Preferences();
+        prefs1.setPurposes(List.of("감성", "사진"));
+        prefs1.setBudget("5~10만원");
+        context1.setPreferences(prefs1);
+        
+        RecommendationResult personalRec = openAIService.generateTripRecommendation(context1);
+        
+        PersonalRecommendationDto dto1 = new PersonalRecommendationDto();
+        dto1.setId("personal_" + System.currentTimeMillis());
+        dto1.setTitle(personalRec.getTitle() != null ? personalRec.getTitle() : "당신과 비슷한 감성 여행 추천");
+        dto1.setDescription("당신의 여행 감각에 맞는 TOP 여행지");
+        dto1.setCourse(personalRec.getCourse());
+        dto1.setWhy(personalRec.getWhy());
+        dto1.setSatisfaction(personalRec.getSatisfaction().getOrDefault(userGeneration, 88));
+        dto1.setType("personal");
+        recommendations.add(dto1);
+        
+        // 2. 다른 세대와의 추천
+        List<String> generations = List.of("30대", "40대", "50대+");
+        for (String gen : generations.subList(0, Math.min(2, generations.size()))) {
+            if (!gen.equals(userGeneration)) {
+                TravelProfile genProfile = getGenerationProfile(gen);
+                
+                RecommendationContext context2 = new RecommendationContext();
+                context2.setUserGeneration(userGeneration);
+                context2.setCompanionGeneration(gen);
+                context2.setUserProfile(travelProfile);
+                context2.setCompanionProfile(genProfile);
+                Preferences prefs2 = new Preferences();
+                prefs2.setPurposes(List.of("감성", "사진"));
+                prefs2.setBudget("5~10만원");
+                context2.setPreferences(prefs2);
+                
+                RecommendationResult genRec = openAIService.generateTripRecommendation(context2);
+                
+                PersonalRecommendationDto dto2 = new PersonalRecommendationDto();
+                dto2.setId("gen_" + gen + "_" + System.currentTimeMillis());
+                dto2.setTitle(genRec.getTitle() != null ? genRec.getTitle() : gen + "와 함께 가면 좋은 여행지");
+                dto2.setDescription("세대로드가 분석한 만족도 높은 코스");
+                dto2.setCourse(genRec.getCourse());
+                dto2.setWhy(genRec.getWhy());
+                dto2.setSatisfaction(genRec.getSatisfaction().getOrDefault(gen, 85));
+                dto2.setType("generation");
+                recommendations.add(dto2);
+            }
+        }
+        
+        // 추천 저장
+        for (PersonalRecommendationDto rec : recommendations) {
+            saveRecommendation(userId, null, rec, "personal".equals(rec.getType()) ? "personal" : "generation");
+        }
+        
+        return recommendations;
+    }
+    
+    public List<RoomRecommendationDto> generateRoomRecommendations(String roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("방을 찾을 수 없습니다."));
+        
+        List<com.sedroad.service.RoomService.ParticipantDto> participants = 
+                getRoomParticipants(roomId);
+        
+        if (participants.isEmpty()) {
+            return List.of();
+        }
+        
+        List<ParticipantInfo> participantInfos = participants.stream().map(p -> {
+            ParticipantInfo info = new ParticipantInfo();
+            info.setGeneration(p.getGeneration());
+            TravelProfile profile = TravelProfile.builder()
+                    .speed(p.getProfile().getSpeed())
+                    .stamina(p.getProfile().getStamina())
+                    .budget(p.getProfile().getBudget())
+                    .photo(p.getProfile().getPhoto())
+                    .tradition(p.getProfile().getTradition())
+                    .build();
+            info.setProfile(profile);
+            info.setName(p.getName());
+            return info;
+        }).collect(Collectors.toList());
+        
+        RecommendationContext context = new RecommendationContext();
+        context.setUserGeneration(participants.get(0).getGeneration());
+        TravelProfile firstProfile = TravelProfile.builder()
+                .speed(participants.get(0).getProfile().getSpeed())
+                .stamina(participants.get(0).getProfile().getStamina())
+                .budget(participants.get(0).getProfile().getBudget())
+                .photo(participants.get(0).getProfile().getPhoto())
+                .tradition(participants.get(0).getProfile().getTradition())
+                .build();
+        context.setUserProfile(firstProfile);
+        Preferences prefs = new Preferences();
+        prefs.setPurposes(List.of("감성", "사진"));
+        prefs.setBudget("5~10만원");
+        context.setPreferences(prefs);
+        context.setParticipants(participantInfos);
+        
+        RecommendationResult result = openAIService.generateTripRecommendation(context);
+        
+        Map<String, Integer> satisfaction = new HashMap<>();
+        for (int i = 0; i < participants.size(); i++) {
+            String key = "participant_" + (i + 1) + "_id";
+            Integer sat = result.getSatisfaction().get(key);
+            if (sat == null) {
+                sat = result.getSatisfaction().get(participants.get(i).getGeneration());
+            }
+            if (sat == null) {
+                sat = 85;
+            }
+            satisfaction.put(participants.get(i).getId(), sat);
+        }
+        
+        RoomRecommendationDto dto = new RoomRecommendationDto();
+        dto.setId("room_" + roomId + "_" + System.currentTimeMillis());
+        dto.setTitle(result.getTitle() != null ? result.getTitle() : room.getName() + "의 공감 여행 추천");
+        dto.setDescription("모든 참여자가 만족할 수 있는 여행 코스");
+        dto.setCourse(result.getCourse());
+        dto.setWhy(result.getWhy());
+        dto.setSatisfaction(satisfaction);
+        dto.setType("room");
+        dto.setRoomName(room.getName());
+        
+        saveRecommendation(null, roomId, dto, "room");
+        
+        return List.of(dto);
+    }
+    
+    private void saveRecommendation(String userId, String roomId, Object recommendation, String type) {
+        TripRecommendation tripRec = new TripRecommendation();
+        tripRec.setId(UUID.randomUUID().toString());
+        
+        if (userId != null) {
+            User user = userRepository.findById(userId).orElse(null);
+            tripRec.setUser(user);
+        }
+        
+        if (roomId != null) {
+            Room room = roomRepository.findById(roomId).orElse(null);
+            tripRec.setRoom(room);
+        }
+        
+        if (recommendation instanceof PersonalRecommendationDto) {
+            PersonalRecommendationDto dto = (PersonalRecommendationDto) recommendation;
+            tripRec.setTitle(dto.getTitle());
+            tripRec.setCourse(dto.getCourse());
+            tripRec.setWhy(dto.getWhy());
+            tripRec.setType(TripRecommendation.Type.valueOf(type));
+        } else if (recommendation instanceof RoomRecommendationDto) {
+            RoomRecommendationDto dto = (RoomRecommendationDto) recommendation;
+            tripRec.setTitle(dto.getTitle());
+            tripRec.setCourse(dto.getCourse());
+            tripRec.setWhy(dto.getWhy());
+            tripRec.setSatisfaction(dto.getSatisfaction());
+            tripRec.setType(TripRecommendation.Type.room);
+        }
+        
+        tripRecommendationRepository.save(tripRec);
+    }
+    
+    private List<com.sedroad.service.RoomService.ParticipantDto> getRoomParticipants(String roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("방을 찾을 수 없습니다."));
+        
+        List<com.sedroad.entity.RoomParticipant> participants = 
+                roomParticipantRepository.findByRoomId(roomId);
+        
+        return participants.stream().map(rp -> {
+            User user = rp.getUser();
+            Optional<UserProfile> profileOpt = userProfileRepository.findByUser(user);
+            
+            com.sedroad.service.RoomService.TravelProfileDto profile = profileOpt.map(up -> 
+                    com.sedroad.service.RoomService.TravelProfileDto.builder()
+                            .speed(up.getSpeed())
+                            .stamina(up.getStamina())
+                            .budget(up.getBudget())
+                            .photo(up.getPhoto())
+                            .tradition(up.getTradition())
+                            .build())
+                    .orElse(com.sedroad.service.RoomService.TravelProfileDto.builder()
+                            .speed(50).stamina(50).budget(50).photo(50).tradition(50)
+                            .build());
+            
+            String tag = determineTag(profile);
+            
+            com.sedroad.service.RoomService.ParticipantDto dto = 
+                    new com.sedroad.service.RoomService.ParticipantDto();
+            dto.setId(user.getId());
+            dto.setName(user.getName());
+            dto.setGeneration(user.getGeneration() != null ? user.getGeneration() : "30대");
+            dto.setProfile(profile);
+            dto.setTag(tag);
+            
+            return dto;
+        }).collect(Collectors.toList());
+    }
+    
+    private String determineTag(com.sedroad.service.RoomService.TravelProfileDto profile) {
+        if (profile.getPhoto() > 70 && profile.getTradition() < 40) {
+            return "감성형";
+        } else if (profile.getTradition() > 70 && profile.getSpeed() < 50) {
+            return "여유형";
+        } else if (profile.getSpeed() > 70) {
+            return "체험형";
+        }
+        return "균형형";
+    }
+    
+    private TravelProfile getGenerationProfile(String generation) {
+        Map<String, TravelProfile> profiles = Map.of(
+                "10대", TravelProfile.builder().speed(90).stamina(95).budget(40).photo(95).tradition(20).build(),
+                "20대", TravelProfile.builder().speed(80).stamina(90).budget(50).photo(90).tradition(30).build(),
+                "30대", TravelProfile.builder().speed(70).stamina(80).budget(60).photo(70).tradition(50).build(),
+                "40대", TravelProfile.builder().speed(60).stamina(70).budget(70).photo(50).tradition(70).build(),
+                "50대+", TravelProfile.builder().speed(50).stamina(60).budget(80).photo(30).tradition(90).build()
+        );
+        return profiles.getOrDefault(generation, profiles.get("30대"));
+    }
+    
+    @lombok.Data
+    public static class PersonalRecommendationDto {
+        private String id;
+        private String title;
+        private String description;
+        private List<String> course;
+        private String why;
+        private Integer satisfaction;
+        private String type;
+    }
+    
+    @lombok.Data
+    public static class RoomRecommendationDto {
+        private String id;
+        private String title;
+        private String description;
+        private List<String> course;
+        private String why;
+        private Map<String, Integer> satisfaction;
+        private String type;
+        private String roomName;
+    }
+}
+
