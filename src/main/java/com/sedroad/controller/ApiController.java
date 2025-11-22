@@ -1,5 +1,6 @@
 package com.sedroad.controller;
 
+import com.sedroad.dto.ErrorResponse;
 import com.sedroad.dto.TravelProfile;
 import com.sedroad.entity.SavedTrip;
 import com.sedroad.entity.TripRecommendation;
@@ -47,7 +48,7 @@ public class ApiController {
             
             if (userAnswersMap == null || userGeneration == null || companionGeneration == null) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "필수 파라미터가 누락되었습니다."));
+                        .body(ErrorResponse.badRequest("필수 파라미터가 누락되었습니다."));
             }
             
             List<AnalysisService.UserAnswer> userAnswers = userAnswersMap.stream()
@@ -88,7 +89,7 @@ public class ApiController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "분석 중 오류가 발생했습니다."));
+                    .body(ErrorResponse.badRequest("분석 중 오류가 발생했습니다."));
         }
     }
     
@@ -102,7 +103,7 @@ public class ApiController {
             
             if (userGeneration == null || companionGeneration == null || preferences == null) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "필수 파라미터가 누락되었습니다."));
+                        .body(ErrorResponse.badRequest("필수 파라미터가 누락되었습니다."));
             }
             
             return ResponseEntity.ok(Map.of(
@@ -112,7 +113,7 @@ public class ApiController {
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "추천 생성 중 오류가 발생했습니다."));
+                    .body(ErrorResponse.badRequest("추천 생성 중 오류가 발생했습니다."));
         }
     }
     
@@ -127,7 +128,7 @@ public class ApiController {
             
             if (userGeneration == null || companionGeneration == null || recommendation == null) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "필수 파라미터가 누락되었습니다."));
+                        .body(ErrorResponse.badRequest("필수 파라미터가 누락되었습니다."));
             }
             
             TravelProfile userProfile = null;
@@ -163,7 +164,7 @@ public class ApiController {
             return ResponseEntity.ok(guide);
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "가이드 생성 중 오류가 발생했습니다.", "details", e.getMessage()));
+                    .body(ErrorResponse.badRequest("가이드 생성 중 오류가 발생했습니다."));
         }
     }
     
@@ -201,7 +202,7 @@ public class ApiController {
             
             if (userId == null || tripId == null) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "사용자 ID와 여행지 ID가 필요합니다."));
+                        .body(ErrorResponse.badRequest("사용자 ID와 여행지 ID가 필요합니다."));
             }
             
             User user = userRepository.findById(userId)
@@ -231,7 +232,7 @@ public class ApiController {
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "저장 중 오류가 발생했습니다."));
+                    .body(ErrorResponse.badRequest("저장 중 오류가 발생했습니다."));
         }
     }
     
@@ -243,7 +244,7 @@ public class ApiController {
             
             if (userId == null || tripId == null) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "사용자 ID와 여행지 ID가 필요합니다."));
+                        .body(ErrorResponse.badRequest("사용자 ID와 여행지 ID가 필요합니다."));
             }
             
             User user = userRepository.findById(userId)
@@ -258,7 +259,7 @@ public class ApiController {
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "저장 취소 중 오류가 발생했습니다."));
+                    .body(ErrorResponse.badRequest("저장 취소 중 오류가 발생했습니다."));
         }
     }
     
@@ -317,7 +318,7 @@ public class ApiController {
             return ResponseEntity.ok(Map.of("trips", trips));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "저장된 여행지 조회 중 오류가 발생했습니다."));
+                    .body(ErrorResponse.badRequest("저장된 여행지 조회 중 오류가 발생했습니다."));
         }
     }
     
@@ -370,7 +371,7 @@ public class ApiController {
             return ResponseEntity.ok(responseMap);
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "프로필 조회 중 오류가 발생했습니다."));
+                    .body(ErrorResponse.badRequest("프로필 조회 중 오류가 발생했습니다."));
         }
     }
 }

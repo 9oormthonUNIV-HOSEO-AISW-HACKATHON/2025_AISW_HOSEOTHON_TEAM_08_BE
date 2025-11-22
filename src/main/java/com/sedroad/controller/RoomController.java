@@ -1,5 +1,6 @@
 package com.sedroad.controller;
 
+import com.sedroad.dto.ErrorResponse;
 import com.sedroad.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -61,7 +62,7 @@ public class RoomController {
             return ResponseEntity.ok(Map.of("room", room));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage()));
+                    .body(ErrorResponse.badRequest(e.getMessage()));
         }
     }
     
@@ -72,7 +73,7 @@ public class RoomController {
             return ResponseEntity.ok(Map.of("rooms", rooms));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "방 목록 조회 중 오류가 발생했습니다."));
+                    .body(ErrorResponse.badRequest("방 목록 조회 중 오류가 발생했습니다."));
         }
     }
     
@@ -83,7 +84,7 @@ public class RoomController {
             return ResponseEntity.ok(Map.of("participants", participants));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage()));
+                    .body(ErrorResponse.badRequest(e.getMessage()));
         }
     }
     

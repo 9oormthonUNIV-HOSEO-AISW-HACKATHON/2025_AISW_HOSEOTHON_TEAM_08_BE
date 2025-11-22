@@ -128,7 +128,23 @@ public class RecommendationService {
                 roomService.getRoomParticipants(roomId);
         
         if (participants.isEmpty()) {
-            return List.of();
+            throw new RuntimeException("방에 참여자가 없습니다.");
+        }
+        
+        // 모든 참여자가 진단을 완료했는지 확인
+        List<String> usersWithoutProfile = new ArrayList<>();
+        for (RoomService.ParticipantDto participant : participants) {
+            UserProfile profile = userProfileRepository.findByUserId(participant.getId())
+                    .orElse(null);
+            if (profile == null) {
+                usersWithoutProfile.add(participant.getName() != null ? participant.getName() : participant.getId());
+            }
+        }
+        
+        if (!usersWithoutProfile.isEmpty()) {
+            String message = String.format("모든 참여자가 여행 진단을 완료해야 합니다. 다음 참여자가 아직 진단을 완료하지 않았습니다: %s", 
+                    String.join(", ", usersWithoutProfile));
+            throw new RuntimeException(message);
         }
         
         List<ParticipantInfo> participantInfos = participants.stream().map(p -> {
