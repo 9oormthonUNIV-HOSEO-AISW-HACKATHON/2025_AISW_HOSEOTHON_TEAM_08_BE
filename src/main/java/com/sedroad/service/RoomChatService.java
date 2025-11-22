@@ -30,21 +30,39 @@ public class RoomChatService {
     private final TripRecommendationRepository tripRecommendationRepository;
     
     public List<CommentDto> getComments(String roomId) {
+        if (roomId == null || roomId.isEmpty()) {
+            throw new IllegalArgumentException("방 ID가 필요합니다.");
+        }
+        
+        if (!roomRepository.existsById(roomId)) {
+            throw new RuntimeException("방을 찾을 수 없습니다.");
+        }
+        
         List<RoomComment> comments = roomCommentRepository.findByRoomId(roomId);
         
         return comments.stream().map(comment -> {
             CommentDto dto = new CommentDto();
             dto.setId(comment.getId());
-            dto.setUserId(comment.getUser().getId());
-            dto.setUserName(comment.getUser().getName());
-            dto.setContent(comment.getContent());
-            dto.setCreatedAt(comment.getCreatedAt().toString());
+            dto.setUserId(comment.getUser() != null ? comment.getUser().getId() : null);
+            dto.setUserName(comment.getUser() != null ? comment.getUser().getName() : "알 수 없음");
+            dto.setContent(comment.getContent() != null ? comment.getContent() : "");
+            dto.setCreatedAt(comment.getCreatedAt() != null ? comment.getCreatedAt().toString() : "");
             return dto;
         }).collect(Collectors.toList());
     }
     
     @Transactional
     public CommentDto createComment(String roomId, String userId, String content) {
+        if (roomId == null || roomId.isEmpty()) {
+            throw new IllegalArgumentException("방 ID가 필요합니다.");
+        }
+        if (userId == null || userId.isEmpty()) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다.");
+        }
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("댓글 내용이 필요합니다.");
+        }
+        
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("방을 찾을 수 없습니다."));
         
@@ -55,7 +73,7 @@ public class RoomChatService {
                 .id(UUID.randomUUID().toString())
                 .room(room)
                 .user(user)
-                .content(content)
+                .content(content.trim())
                 .build();
         
         comment = roomCommentRepository.save(comment);
@@ -71,13 +89,25 @@ public class RoomChatService {
     }
     
     public Map<String, Integer> getVotes(String roomId) {
+        if (roomId == null || roomId.isEmpty()) {
+            throw new IllegalArgumentException("방 ID가 필요합니다.");
+        }
+        
+        if (!roomRepository.existsById(roomId)) {
+            throw new RuntimeException("방을 찾을 수 없습니다.");
+        }
+        
         List<Object[]> voteCounts = roomVoteRepository.countVotesByRoomId(roomId);
         
         Map<String, Integer> votes = new HashMap<>();
         for (Object[] row : voteCounts) {
-            String recommendationId = (String) row[0];
-            Long count = (Long) row[1];
-            votes.put(recommendationId, count.intValue());
+            if (row != null && row.length >= 2) {
+                String recommendationId = (String) row[0];
+                Long count = (Long) row[1];
+                if (recommendationId != null && count != null) {
+                    votes.put(recommendationId, count.intValue());
+                }
+            }
         }
         
         return votes;
@@ -85,6 +115,16 @@ public class RoomChatService {
     
     @Transactional
     public VoteResponse createVote(String roomId, String userId, String recommendationId) {
+        if (roomId == null || roomId.isEmpty()) {
+            throw new IllegalArgumentException("방 ID가 필요합니다.");
+        }
+        if (userId == null || userId.isEmpty()) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다.");
+        }
+        if (recommendationId == null || recommendationId.isEmpty()) {
+            throw new IllegalArgumentException("추천 ID가 필요합니다.");
+        }
+        
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("방을 찾을 수 없습니다."));
         

@@ -1,5 +1,11 @@
 package com.sedroad.service;
 
+import java.util.UUID;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.sedroad.config.JwtUtil;
 import com.sedroad.dto.AuthRequest;
 import com.sedroad.dto.AuthResponse;
@@ -8,12 +14,8 @@ import com.sedroad.entity.User;
 import com.sedroad.entity.UserProfile;
 import com.sedroad.repository.UserProfileRepository;
 import com.sedroad.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -25,21 +27,33 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(AuthRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (request == null) {
+            throw new IllegalArgumentException("요청 정보가 필요합니다.");
+        }
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("이메일이 필요합니다.");
+        }
+        if (request.getPassword() == null || request.getPassword().isEmpty()) {
+            throw new IllegalArgumentException("비밀번호가 필요합니다.");
+        }
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("이름이 필요합니다.");
+        }
+        
+        if (userRepository.existsByEmail(request.getEmail().trim())) {
             throw new RuntimeException("이미 등록된 이메일입니다.");
         }
 
         User user = User.builder()
                 .id(UUID.randomUUID().toString())
-                .email(request.getEmail())
+                .email(request.getEmail().trim().toLowerCase())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName())
-                .generation(request.getGeneration())
+                .name(request.getName().trim())
+                .generation(request.getGeneration() != null ? request.getGeneration().trim() : null)
                 .build();
 
         user = userRepository.save(user);
 
-        // 기본 프로필 생성
         UserProfile profile = UserProfile.builder()
                 .id(UUID.randomUUID().toString())
                 .user(user)
@@ -62,7 +76,17 @@ public class AuthService {
     }
 
     public AuthResponse login(AuthRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        if (request == null) {
+            throw new IllegalArgumentException("요청 정보가 필요합니다.");
+        }
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("이메일이 필요합니다.");
+        }
+        if (request.getPassword() == null || request.getPassword().isEmpty()) {
+            throw new IllegalArgumentException("비밀번호가 필요합니다.");
+        }
+        
+        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> new RuntimeException("잘못된 이메일 또는 비밀번호입니다."));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {

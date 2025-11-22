@@ -64,7 +64,6 @@ public class OpenAIService {
             String content = service.createChatCompletion(request)
                     .getChoices().get(0).getMessage().getContent();
             
-            // JSON 파싱 (간단한 구현, 실제로는 Jackson ObjectMapper 사용 권장)
             RecommendationResult result = parseRecommendationResult(content);
             result.setForGeneration(context.getCompanionGeneration() != null 
                     ? context.getCompanionGeneration() 
@@ -79,7 +78,6 @@ public class OpenAIService {
     
     private String buildUserPrompt(RecommendationContext context) {
         if (context.getParticipants() != null && context.getParticipants().size() > 1) {
-            // 다중 세대 방 추천
             StringBuilder participantsInfo = new StringBuilder();
             for (ParticipantInfo p : context.getParticipants()) {
                 participantsInfo.append(String.format("- %s (%s): 속도 %d%%, 체력 %d%%, 예산 %d%%, 사진 %d%%, 전통 %d%%\n",
@@ -131,7 +129,6 @@ public class OpenAIService {
                         ? context.getPreferences().getPreferredPlaces() 
                         : "서울 전역");
         } else {
-            // 개인 또는 2인 추천
             String companionInfo = context.getCompanionGeneration() != null
                     ? String.format("\n**동반자:** %s (속도 %d%%, 체력 %d%%, 예산 %d%%, 사진 %d%%, 전통 %d%%)",
                             context.getCompanionGeneration(),
@@ -313,7 +310,6 @@ public class OpenAIService {
             return parseTalkingGuideResult(content);
         } catch (Exception e) {
             log.error("OpenAI 대화 가이드 생성 오류", e);
-            // 오류 발생 시 기본 가이드 반환
             return getDefaultTalkingGuide(context);
         }
     }

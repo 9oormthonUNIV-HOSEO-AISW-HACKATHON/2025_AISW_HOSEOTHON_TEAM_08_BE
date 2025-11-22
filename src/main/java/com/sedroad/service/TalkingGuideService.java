@@ -32,7 +32,6 @@ public class TalkingGuideService {
             Map<String, Object> recommendation
     ) {
         try {
-            // OpenAI를 사용하여 개인화된 대화 가이드 생성
             TalkingGuideContext context = new TalkingGuideContext();
             context.setUserGeneration(userGeneration);
             context.setCompanionGeneration(companionGeneration);
@@ -50,7 +49,6 @@ public class TalkingGuideService {
             return response;
         } catch (Exception e) {
             log.error("대화 가이드 생성 오류", e);
-            // 오류 발생 시 기본 가이드 반환
             return getDefaultGuide(userGeneration, companionGeneration, recommendation);
         }
     }

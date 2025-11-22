@@ -52,19 +52,18 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
 }
 
-// Lombok annotation processor 설정
 tasks.withType(JavaCompile) {
     options.compilerArgs << '-parameters'
     options.encoding = 'UTF-8'
 }
 
-// bootRun 태스크에서 .env 파일의 환경 변수 자동 로드
 tasks.named('bootRun') {
     doFirst {
         def envFile = file('.env')

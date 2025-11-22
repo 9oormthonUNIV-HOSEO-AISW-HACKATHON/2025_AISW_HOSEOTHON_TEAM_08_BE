@@ -28,12 +28,16 @@ public class RoomService {
     
     @Transactional
     public RoomResponse createRoom(String userId, String roomName) {
+        if (userId == null || userId.isEmpty()) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다.");
+        }
+        
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
         
         Room room = Room.builder()
                 .id(UUID.randomUUID().toString())
-                .name(roomName != null && !roomName.isEmpty() ? roomName : "새로운 여행 방")
+                .name(roomName != null && !roomName.trim().isEmpty() ? roomName.trim() : "새로운 여행 방")
                 .inviteCode(generateInviteCode())
                 .createdBy(user)
                 .isActive(true)
@@ -41,7 +45,6 @@ public class RoomService {
         
         room = roomRepository.save(room);
         
-        // 생성자를 참여자로 추가
         RoomParticipant participant = RoomParticipant.builder()
                 .id(UUID.randomUUID().toString())
                 .room(room)
@@ -66,10 +69,17 @@ public class RoomService {
     
     @Transactional
     public RoomResponse joinRoom(String userId, String inviteCode) {
+        if (userId == null || userId.isEmpty()) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다.");
+        }
+        if (inviteCode == null || inviteCode.isEmpty()) {
+            throw new IllegalArgumentException("초대 코드가 필요합니다.");
+        }
+        
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
         
-        Room room = roomRepository.findByInviteCode(inviteCode)
+        Room room = roomRepository.findByInviteCode(inviteCode.trim().toUpperCase())
                 .orElseThrow(() -> new RuntimeException("유효하지 않은 초대 코드입니다."));
         
         if (roomParticipantRepository.existsByRoomAndUser(room, user)) {
@@ -105,18 +115,26 @@ public class RoomService {
     }
     
     public RoomDto getRoom(String roomId) {
+        if (roomId == null || roomId.isEmpty()) {
+            throw new IllegalArgumentException("방 ID가 필요합니다.");
+        }
+        
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("방을 찾을 수 없습니다."));
         
         RoomDto dto = new RoomDto();
         dto.setId(room.getId());
         dto.setName(room.getName());
-        dto.setCreatedBy(room.getCreatedBy().getId());
-        dto.setCreatedAt(room.getCreatedAt().toString());
+        dto.setCreatedBy(room.getCreatedBy() != null ? room.getCreatedBy().getId() : null);
+        dto.setCreatedAt(room.getCreatedAt() != null ? room.getCreatedAt().toString() : "");
         return dto;
     }
     
     public List<RoomDto> getUserRooms(String userId) {
+        if (userId == null || userId.isEmpty()) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다.");
+        }
+        
         List<Room> rooms = roomRepository.findByUserId(userId);
         
         return rooms.stream().map(room -> {
@@ -134,6 +152,10 @@ public class RoomService {
     }
     
     public List<ParticipantDto> getRoomParticipants(String roomId) {
+        if (roomId == null || roomId.isEmpty()) {
+            throw new IllegalArgumentException("방 ID가 필요합니다.");
+        }
+        
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("방을 찾을 수 없습니다."));
         
@@ -141,14 +163,18 @@ public class RoomService {
         
         return participants.stream().map(rp -> {
             User user = rp.getUser();
+            if (user == null) {
+                return null;
+            }
+            
             Optional<UserProfile> profileOpt = userProfileRepository.findByUser(user);
             
             TravelProfileDto profile = profileOpt.map(up -> TravelProfileDto.builder()
-                    .speed(up.getSpeed())
-                    .stamina(up.getStamina())
-                    .budget(up.getBudget())
-                    .photo(up.getPhoto())
-                    .tradition(up.getTradition())
+                    .speed(up.getSpeed() != null ? up.getSpeed() : 50)
+                    .stamina(up.getStamina() != null ? up.getStamina() : 50)
+                    .budget(up.getBudget() != null ? up.getBudget() : 50)
+                    .photo(up.getPhoto() != null ? up.getPhoto() : 50)
+                    .tradition(up.getTradition() != null ? up.getTradition() : 50)
                     .build()).orElse(TravelProfileDto.builder()
                     .speed(50).stamina(50).budget(50).photo(50).tradition(50)
                     .build());
@@ -157,13 +183,14 @@ public class RoomService {
             
             ParticipantDto dto = new ParticipantDto();
             dto.setId(user.getId());
-            dto.setName(user.getName());
+            dto.setName(user.getName() != null ? user.getName() : "알 수 없음");
             dto.setGeneration(user.getGeneration() != null ? user.getGeneration() : "30대");
             dto.setProfile(profile);
             dto.setTag(tag);
             
             return dto;
-        }).collect(Collectors.toList());
+        }).filter(dto -> dto != null)
+          .collect(Collectors.toList());
     }
     
     private String generateInviteCode() {

@@ -45,7 +45,6 @@ public class AnalysisService {
                 ? Math.max(-30, Math.min(0, -speedDiff * 0.5))
                 : 0;
         
-        int traditionDiff = userProfile.getTradition() - companionProfile.getTradition();
         double traditionalRatio = Math.max(0.3, Math.min(0.7, 0.5 + (companionProfile.getTradition() - userProfile.getTradition()) / 200.0));
         
         Adjustments adjustments = new Adjustments();

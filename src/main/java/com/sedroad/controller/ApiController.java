@@ -15,7 +15,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -77,8 +80,6 @@ public class ApiController {
                         .body(Map.of("error", "필수 파라미터가 누락되었습니다."));
             }
             
-            // 실제로는 OpenAI 서비스를 통해 추천 생성
-            // 여기서는 간단한 응답만 반환
             return ResponseEntity.ok(Map.of(
                     "title", "추천 여행",
                     "course", List.of("장소1", "장소2", "장소3"),
@@ -104,7 +105,6 @@ public class ApiController {
                         .body(Map.of("error", "필수 파라미터가 누락되었습니다."));
             }
             
-            // 사용자 프로필 정보 추출 (선택적)
             TravelProfile userProfile = null;
             TravelProfile companionProfile = null;
             
@@ -241,8 +241,9 @@ public class ApiController {
     @GetMapping("/trips/saved/{userId}")
     public ResponseEntity<?> getSavedTrips(@PathVariable String userId) {
         try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+            if (!userRepository.existsById(userId)) {
+                throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            }
             
             List<SavedTrip> savedTrips = savedTripRepository.findByUserId(userId);
             
@@ -256,7 +257,7 @@ public class ApiController {
                     "satisfaction", rec.getSatisfaction() != null ? rec.getSatisfaction() : Map.of(),
                     "savedAt", st.getCreatedAt() != null ? st.getCreatedAt().toString() : ""
                 );
-            }).collect(java.util.stream.Collectors.toList());
+            }).collect(Collectors.toList());
             
             return ResponseEntity.ok(Map.of("trips", trips));
         } catch (Exception e) {
@@ -276,7 +277,6 @@ public class ApiController {
                     .orElse(null);
             
             if (profile == null) {
-                // 프로필이 없으면 기본값 반환
                 return ResponseEntity.ok(Map.of(
                     "name", user.getName(),
                     "email", user.getEmail(),
